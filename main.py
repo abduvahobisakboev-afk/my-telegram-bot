@@ -6,7 +6,7 @@ from aiohttp import web
 import yt_dlp
 
 # --- SOZLAMALAR ---
-TOKEN = "7880913847:AAFe7u0G0-rS-7A6u9642W-P3_L-9jE_eG8"
+TOKEN = "8302977160:AAHme7pxM3bpGLr0kCqe_hLT1bAZ1Va5FMk"
 BUTTON_TEXT = "🗄 Saqlanganlarni ko'rish"
 
 bot = Bot(token=TOKEN)
@@ -35,7 +35,7 @@ def download_video(url):
 async def cmd_start(message: types.Message):
     kb = [[types.KeyboardButton(text=BUTTON_TEXT)]]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    await message.answer("Salom! Menga Instagram linkini yuborsangiz yuklab beraman, matn yuborsangiz saqlab qo'yaman. 📥✨", reply_markup=keyboard)
+    await message.answer("Salom! Menga Instagram video silkasini yoki matn yuborsangiz saqlab qo'yaman. 📥✨", reply_markup=keyboard)
 
 # --- INSTAGRAM LINKI KELSA ---
 @dp.message(F.text.contains("instagram.com"))
@@ -73,3 +73,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
