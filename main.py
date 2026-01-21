@@ -6,14 +6,14 @@ from aiohttp import web
 import yt_dlp
 
 # --- SOZLAMALAR ---
-TOKEN = "8302977160:AAHme7pxM3bpGLr0kCqe_hLT1bAZ1Va5FMk"
-BUTTON_TEXT = "🗄 Saqlanganlarni ko'rish"
+TOKEN = "7880913847:AAFe7u0G0-rS-7A6u9642W-P3_L-9jE_eG8"
+BUTTON_TEXT = "🗄 Saqlashda foydalanish" # Tugma nomi rasmdegidek aniq bo'lishi kerak
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-user_data = {} # Note'larni saqlash uchun
+user_data = {}
 
-# --- WEB SERVER (Render uxlab qolmasligi uchun) ---
+# --- WEB SERVER ---
 async def handle(request): return web.Response(text="Bot ishlayapti!")
 async def start_web_server():
     app = web.Application()
@@ -30,26 +30,13 @@ def download_video(url):
         ydl.download([url])
     return 'video.mp4'
 
-# --- COMMANDS ---
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     kb = [[types.KeyboardButton(text=BUTTON_TEXT)]]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    await message.answer("Salom! Menga Instagram video silkasini yoki matn yuborsangiz saqlab qo'yaman. 📥✨", reply_markup=keyboard)
+    await message.answer("Salom! Menga Instagram linkini yuboring yoki saqlash uchun matn yozing. ✨", reply_markup=keyboard)
 
-# --- INSTAGRAM LINKI KELSA ---
-@dp.message(F.text.contains("instagram.com"))
-async def handle_insta(message: types.Message):
-    wait_msg = await message.answer("Video yuklanmoqda... ⏳")
-    try:
-        path = await asyncio.to_thread(download_video, message.text)
-        await message.answer_video(video=types.FSInputFile(path), caption="Tayyor! ✅")
-        os.remove(path)
-        await wait_msg.delete()
-    except Exception:
-        await wait_msg.edit_text("Xatolik: Videoni yuklab bo'lmadi. ❌")
-
-# --- SAQLANGANLARNI KO'RISH ---
+# --- SAQLANGANLARNI KO'RSATISH ---
 @dp.message(F.text == BUTTON_TEXT)
 async def show_notes(message: types.Message):
     uid = message.from_user.id
@@ -57,20 +44,35 @@ async def show_notes(message: types.Message):
         notes = "\n".join([f"• {n}" for n in user_data[uid]])
         await message.answer(f"Sizning eslatmalaringiz:\n\n{notes}")
     else:
-        await message.answer("Hozircha hech narsa saqlanmagan. ✨")
+        await message.answer("Hozircha saqlangan ma'lumotlar yo'q. ✨")
 
-# --- ODDIY MATN KELSA (NOTE SIFATIDA SAQLASH) ---
+# --- INSTAGRAM LINKI VA ODDIY MATNLAR ---
 @dp.message(F.text)
-async def save_note(message: types.Message):
-    if message.text == BUTTON_TEXT: return
-    uid = message.from_user.id
-    if uid not in user_data: user_data[uid] = []
-    user_data[uid].append(message.text)
-    await message.answer(f"'{message.text}' xotiraga saqlandi! ✅")
+async def handle_message(message: types.Message):
+    # Tugma bosilsa, uni saqlab qo'ymasligi uchun tekshiruv
+    if message.text == BUTTON_TEXT:
+        return
+
+    # Instagram linki bo'lsa
+    if "instagram.com" in message.text:
+        wait_msg = await message.answer("Video yuklanmoqda... ⏳")
+        try:
+            path = await asyncio.to_thread(download_video, message.text)
+            await message.answer_video(video=types.FSInputFile(path), caption="Tayyor! ✅")
+            os.remove(path)
+            await wait_msg.delete()
+        except Exception:
+            await wait_msg.edit_text("Xatolik: Videoni yuklab bo'lmadi. ❌")
+    
+    # Instagram bo'lmagan har qanday matnni NOTE sifatida saqlash
+    else:
+        uid = message.from_user.id
+        if uid not in user_data: user_data[uid] = []
+        user_data[uid].append(message.text)
+        await message.answer(f"'{message.text}' xotiraga saqlandi! ✅")
 
 async def main():
     await asyncio.gather(start_web_server(), dp.start_polling(bot))
 
 if __name__ == "__main__":
     asyncio.run(main())
-
