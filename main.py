@@ -6,9 +6,10 @@ from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiohttp import web
 import yt_dlp
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # --- SOZLAMALAR ---
-TOKEN = "7880913847:AAFe7u0G0-rS-7A6u9642W-P3_L-9jE_eG8"
+TOKEN = "8302977160:AAHme7pxM3bpGLr0kCqe_hLT1bAZ1Va5FMk"
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 BTN_CLEAR = "🗑 Hammasini o'chirish"
 
@@ -16,15 +17,32 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 user_data = {}
 
-# --- WEB SERVER (Cron-job uchun) ---
+# --- ERTALABKI ESLATMA FUNKSIYASI ---
+async def daily_reminder():
+    for uid, data in user_data.items():
+        if data['notes']:
+            report = "Ertalabki hisobot! ☀️\n\n"
+            for n in data['notes']:
+                diff = (datetime.now() - n['time']).days
+                report += f"• {n['text']} (saqlanganiga {diff} kun bo'ldi) ⏳\n"
+            try:
+                await bot.send_message(uid, report)
+            except:
+                pass
+
+# --- WEB SERVER VA SCHEDULER ---
 async def handle(request): return web.Response(text="Bot Live!")
-async def start_web_server():
-    app = web.Application()
-    app.router.add_get("/", handle)
-    runner = web.AppRunner(app)
-    await runner.setup()
+async def start_services():
+    # Web serverni ishga tushirish
+    app = web.Application(); app.router.add_get("/", handle)
+    runner = web.AppRunner(app); await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 8080)))
     await site.start()
+    
+    # Har kuni soat 08:00 da eslatishni sozlash
+    scheduler = AsyncIOScheduler(timezone="Asia/Tashkent")
+    scheduler.add_job(daily_reminder, 'cron', hour=8, minute=0)
+    scheduler.start()
 
 # --- INSTAGRAM YUKLOVCHI ---
 def download_video(url):
@@ -37,11 +55,10 @@ def download_video(url):
 async def cmd_start(message: types.Message):
     kb = [[types.KeyboardButton(text=BTN_VIEW)], [types.KeyboardButton(text=BTN_CLEAR)]]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
-    await message.answer("Salom! Matn yuborsangiz, tasdiqlaganingizdan keyin saqlayman. ✨", reply_markup=keyboard)
+    await message.answer("Salom! Instagram link yuboring (darhol yuklayman) yoki matn yozing. ✨", reply_markup=keyboard)
 
-# --- SAQLASHNI TASDIQLASH (Inline Button) ---
 @dp.message(F.text)
-async def ask_to_save(message: types.Message):
+async def handle_msg(message: types.Message):
     if message.text in [BTN_VIEW, BTN_CLEAR]: return
     
     if "instagram.com" in message.text:
@@ -49,59 +66,48 @@ async def ask_to_save(message: types.Message):
         try:
             path = await asyncio.to_thread(download_video, message.text)
             await message.answer_video(video=types.FSInputFile(path), caption="Tayyor! ✅")
-            os.remove(path)
-            await wait_msg.delete()
-        except Exception:
-            await wait_msg.edit_text("Xatolik: Yuklab bo'lmadi. ❌")
+            os.remove(path); await wait_msg.delete()
+        except Exception: await wait_msg.edit_text("Xatolik! ❌")
     else:
-        # Saqlashni so'rash
-        builder = InlineKeyboardBuilder()
-        builder.row(types.InlineKeyboardButton(text="Ha, saqlansin ✅", callback_data=f"save_{message.text[:20]}"))
-        builder.row(types.InlineKeyboardButton(text="Yo'q, kerakmas ❌", callback_data="cancel_save"))
-        
-        # Vaqtincha xotirada ushlab turish
         uid = message.from_user.id
-        if uid not in user_data: user_data[uid] = {'notes': [], 'temp_note': ""}
-        user_data[uid]['temp_note'] = message.text
-        
-        await message.answer(f"'{message.text}' - Ushbu matnni saqlaymi?", reply_markup=builder.as_markup())
+        if uid not in user_data: user_data[uid] = {'notes': [], 'temp': ""}
+        user_data[uid]['temp'] = message.text
+        builder = InlineKeyboardBuilder()
+        builder.row(types.InlineKeyboardButton(text="Ha, saqlansin ✅", callback_data="confirm_save"))
+        builder.row(types.InlineKeyboardButton(text="Yo'q ❌", callback_data="cancel_save"))
+        await message.answer(f"'{message.text}' - Saqlaymi?", reply_markup=builder.as_markup())
 
-# --- TUGMA BOSILGANDA ---
-@dp.callback_query(F.data.startswith("save_"))
-async def confirm_save(callback: types.CallbackQuery):
+@dp.callback_query(F.data == "confirm_save")
+async def save_now(callback: types.CallbackQuery):
     uid = callback.from_user.id
-    note = user_data[uid].get('temp_note', "")
+    note = user_data[uid].get('temp', "")
     if note:
         user_data[uid]['notes'].append({'text': note, 'time': datetime.now()})
-        await callback.message.edit_text(f"'{note}' xotiraga saqlandi! ✅")
-    user_data[uid]['temp_note'] = ""
+        await callback.message.edit_text(f"'{note}' saqlandi! ✅")
+    user_data[uid]['temp'] = ""
 
 @dp.callback_query(F.data == "cancel_save")
-async def cancel_save(callback: types.CallbackQuery):
-    await callback.message.edit_text("Saqlash bekor qilindi. ✨")
+async def cancel_now(callback: types.CallbackQuery):
+    await callback.message.edit_text("Bekor qilindi. ❌")
 
-# --- KO'RISH ---
 @dp.message(F.text == BTN_VIEW)
-async def show_notes(message: types.Message):
+async def view(message: types.Message):
     uid = message.from_user.id
     if uid in user_data and user_data[uid]['notes']:
-        res = "Sizning eslatmalaringiz:\n\n"
+        res = "Eslatmalaringiz:\n\n"
         for n in user_data[uid]['notes']:
-            diff = datetime.now() - n['time']
-            res += f"• {n['text']} ({diff.days} kun bo'ldi) ⏳\n"
+            d = (datetime.now() - n['time']).days
+            res += f"• {n['text']} ({d} kun bo'ldi) ⏳\n"
         await message.answer(res)
-    else:
-        await message.answer("Ma'lumot topilmadi. ✨")
+    else: await message.answer("Bo'sh! ✨")
 
-# --- O'CHIRISH ---
 @dp.message(F.text == BTN_CLEAR)
-async def clear_notes(message: types.Message):
-    uid = message.from_user.id
-    if uid in user_data: user_data[uid]['notes'] = []
-    await message.answer("Barcha eslatmalar o'chirildi! 🗑")
+async def clear(message: types.Message):
+    if message.from_user.id in user_data: user_data[message.from_user.id]['notes'] = []
+    await message.answer("O'chirildi! 🗑")
 
 async def main():
-    await asyncio.gather(start_web_server(), dp.start_polling(bot))
+    await asyncio.gather(start_services(), dp.start_polling(bot))
 
 if __name__ == "__main__":
     asyncio.run(main())
