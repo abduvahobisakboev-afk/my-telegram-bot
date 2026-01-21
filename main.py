@@ -10,7 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # --- SOZLAMALAR ---
 # Sizning yangi tokeningiz qo'yildi
-TOKEN = "8302977160:AAEMqZB0VHWTvNuCJQBCyqdzWZju-645Jd4"
+TOKEN = "8302977160:AAFdsxTWdSFjiG-ppp-xJaxGbqE-89EhUzY"
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 
 bot = Bot(token=TOKEN)
@@ -120,3 +120,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
