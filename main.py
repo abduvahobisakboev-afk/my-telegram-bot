@@ -8,8 +8,8 @@ from aiohttp import web
 import yt_dlp
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# --- SOZLAMALAR ---
-TOKEN = "8302977160:AAEMqZB0VHWTvNuCJQBCyqdzWZju-645Jd4"
+# --- YANGI TOKENINGIZ JOYLANGAN ---
+TOKEN = "8302977160:AAFdsxTWdSFjiG-ppp-xJaxGbqE-89EhUzY" 
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 
 bot = Bot(token=TOKEN)
@@ -28,8 +28,8 @@ async def daily_reminder():
                 await bot.send_message(uid, report)
             except: pass
 
-# --- SERVER VA SCHEDULER (RENDER UCHUN) ---
-async def handle(request): return web.Response(text="Bot is Live!")
+# --- SERVER VA SCHEDULER (RENDERDA KOMPYUTERSIZ ISHLASHI UCHUN) ---
+async def handle(request): return web.Response(text="Bot is Live and Stable!")
 
 async def start_services():
     app = web.Application()
@@ -39,6 +39,7 @@ async def start_services():
     site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 8080)))
     await site.start()
     
+    # O'zbekiston vaqti bilan hisobot rejalashtiruvchisi
     scheduler = AsyncIOScheduler(timezone="Asia/Tashkent")
     scheduler.add_job(daily_reminder, 'cron', hour=8, minute=0)
     scheduler.start()
@@ -55,7 +56,7 @@ async def cmd_start(message: types.Message):
     kb = [[types.KeyboardButton(text=BTN_VIEW)]]
     keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True, one_time_keyboard=False)
     await message.answer(
-        "Salom! Matn yozing yoki Instagram link tashlang. ✨\nMen sizga ma'lumotlarni vaqtini hisoblab saqlashga yordam beraman.",
+        "Salom! Matn yuboring yoki Instagram link tashlang. ✨\n\nMen sizga ma'lumotlarni vaqtini hisoblab saqlashga yordam beraman.", 
         reply_markup=keyboard
     )
 
@@ -73,73 +74,8 @@ async def view_notes_handler(message: types.Message):
             hours = diff.seconds // 3600
             minutes = (diff.seconds // 60) % 60
             
-            # Siz xohlagan format: Kun, Soat va Minut (0 bo'lsa ham ko'rinadi)
+            # 0 bo'lsa ham ko'rsatiladigan format
             time_text = (f"⏳ Siz bu xabarni saqlaganingizga:\n"
                          f"➡️ {days} kun, {hours} soat va {minutes} minut bo'ldi.")
             
             builder = InlineKeyboardBuilder()
-            builder.row(types.InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"del_{i}"))
-            
-            await message.answer(
-                f"📌 **Xabar:** {n['text']}\n\n{time_text}",
-                reply_markup=builder.as_markup(),
-                parse_mode="Markdown"
-            )
-    else:
-        await message.answer("Hozircha hech qanday ma'lumot saqlanmagan. ✨")
-
-# --- XABARLARNI QABUL QILISH ---
-@dp.message(F.text)
-async def handle_msg(message: types.Message):
-    # Instagram tekshiruvi
-    if "instagram.com" in message.text:
-        wait = await message.answer("Video yuklanmoqda... ⏳")
-        try:
-            path = await asyncio.to_thread(download_video, message.text)
-            await message.answer_video(video=types.FSInputFile(path), caption="Tayyor! ✅")
-            os.remove(path); await wait.delete()
-        except:
-            await wait.edit_text("Xatolik! Linkni tekshiring. ❌")
-        return
-
-    # Matnni vaqtinchalik xotiraga olish
-    uid = message.from_user.id
-    if uid not in user_data: user_data[uid] = {'notes': [], 'temp': ""}
-    user_data[uid]['temp'] = message.text
-    
-    builder = InlineKeyboardBuilder()
-    builder.row(types.InlineKeyboardButton(text="Ha, saqlansin ✅", callback_data="confirm_save"))
-    builder.row(types.InlineKeyboardButton(text="Yo'q ❌", callback_data="cancel_save"))
-    await message.answer(f"'{message.text}' - Saqlaymi?", reply_markup=builder.as_markup())
-
-# --- TUGMA CALLBACKLARI ---
-@dp.callback_query(F.data == "confirm_save")
-async def save_ok(callback: types.CallbackQuery):
-    uid = callback.from_user.id
-    note = user_data[uid].get('temp', "")
-    if note:
-        # Hozirgi aniq vaqtni saqlash
-        user_data[uid]['notes'].append({'text': note, 'time': datetime.now()})
-        await callback.message.edit_text(f"'{note}' muvaffaqiyatli saqlandi! ✅")
-    user_data[uid]['temp'] = ""
-
-@dp.callback_query(F.data == "cancel_save")
-async def save_no(callback: types.CallbackQuery):
-    await callback.message.edit_text("Amaliyot bekor qilindi. ❌")
-
-@dp.callback_query(F.data.startswith("del_"))
-async def delete_callback(callback: types.CallbackQuery):
-    index = int(callback.data.split("_")[1])
-    uid = callback.from_user.id
-    if uid in user_data and len(user_data[uid]['notes']) > index:
-        user_data[uid]['notes'].pop(index)
-        await callback.message.delete()
-        await callback.answer("O'chirildi ✅")
-
-# --- ASOSIY ISHGA TUSHIRISH ---
-async def main():
-    await bot.delete_webhook(drop_pending_updates=True)
-    await asyncio.gather(start_services(), dp.start_polling(bot))
-
-if __name__ == "__main__":
-    asyncio.run(main())
