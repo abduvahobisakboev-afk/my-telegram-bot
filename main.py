@@ -17,10 +17,10 @@ BTN_HOME = "🏠 Bosh menyu"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-user_data = {}
+user_data = {} # Eslatma: Bu bot vaqtincha xotiradan foydalanadi
 
-# --- SERVER ---
-async def handle(request): return web.Response(text="Bot is running stable!")
+# --- SERVER (RENDER UCHUN) ---
+async def handle(request): return web.Response(text="Bot is Live!")
 async def start_services():
     app = web.Application()
     app.router.add_get("/", handle)
@@ -41,14 +41,13 @@ def main_menu():
 @dp.message(F.text == BTN_HOME)
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    # Stiker yuborish
+    # Tabassum stikeri
     await message.answer_sticker("CAACAgIAAxkBAAELyRxl6R8X7TzS9Z7Q1Z_N8X7TzS9Z7A")
-    # Siz aytgan matn
     await message.answer("Salom! Bot tayyor. Hamma xizmatlarimiz tayyor! ✨🤖", reply_markup=main_menu())
 
 # --- SAQLANGANLARNI KO'RISH (ANIQ VAQT BILAN) ---
 @dp.message(F.text == BTN_VIEW)
-async def view_notes_handler(message: types.Message):
+async def view_notes(message: types.Message):
     uid = message.from_user.id
     if uid in user_data and user_data[uid].get('notes'):
         await message.answer("Sizning barcha eslatmalaringiz: 👇")
@@ -58,19 +57,18 @@ async def view_notes_handler(message: types.Message):
             
             builder = InlineKeyboardBuilder()
             builder.row(types.InlineKeyboardButton(text="🗑 Hammasini o'chirish", callback_data=f"delall_{i}"))
-            
             await message.answer(f"📌 **Xabar:** {n['text']}\n\n{time_text}", reply_markup=builder.as_markup(), parse_mode="Markdown")
     else:
         await message.answer("Hozircha hech narsa saqlanmagan. ✨")
 
-# --- OVOZLI XABARNI MATNGA AYLANTIRISH (TEZKOR) ---
+# --- OVOZLI XABAR (TEZROQ TAHLIL) ---
 @dp.message(F.text == BTN_VOICE)
 async def voice_start(message: types.Message):
     await message.answer("Menga ovozli xabar yuboring, men uni darhol matnga o'girib beraman! 🎤🚀")
 
 @dp.message(F.voice)
 async def voice_proc(message: types.Message):
-    wait = await message.answer("Ovoz tahlil qilinmoqda (tezkor)... 🚀")
+    wait = await message.answer("Ovoz tahlil qilinmoqda... 🚀")
     file = await bot.get_file(message.voice.file_id)
     voice_path = f"v_{message.from_user.id}.ogg"
     await bot.download_file(file.file_path, voice_path)
@@ -93,7 +91,7 @@ async def voice_proc(message: types.Message):
 @dp.message(F.text)
 async def text_handler(message: types.Message):
     if "instagram.com" in message.text:
-        return # Instagram yuklash kodi
+        return # Instagram yuklovchi mantiqi
 
     uid = message.from_user.id
     if uid not in user_data: user_data[uid] = {'notes': [], 'temp': ""}
@@ -104,7 +102,7 @@ async def text_handler(message: types.Message):
                 types.InlineKeyboardButton(text="Yo'q ❌", callback_data="save_no"))
     await message.answer(f"'{message.text}' - Saqlaymi?", reply_markup=builder.as_markup())
 
-# --- CALLBACK TUGMALAR ---
+# --- CALLBACKLAR ---
 @dp.callback_query(F.data == "save_ok")
 async def save_cb(callback: types.CallbackQuery):
     uid = callback.from_user.id
