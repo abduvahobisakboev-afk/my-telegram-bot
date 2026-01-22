@@ -9,7 +9,6 @@ import yt_dlp
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 # --- SOZLAMALAR ---
-# Eng oxirgi yangilangan tokeningiz
 TOKEN = "8302977160:AAEMqZB0VHWTvNuCJQBCyqdzWZju-645Jd4"
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 
@@ -29,8 +28,8 @@ async def daily_reminder():
                 await bot.send_message(uid, report)
             except: pass
 
-# --- SERVER VA SCHEDULER (KOMPYUTERSIZ ISHLASH UCHUN) ---
-async def handle(request): return web.Response(text="Bot is Live and Stable!")
+# --- SERVER VA SCHEDULER (RENDER UCHUN) ---
+async def handle(request): return web.Response(text="Bot is Live!")
 
 async def start_services():
     app = web.Application()
@@ -40,7 +39,6 @@ async def start_services():
     site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 8080)))
     await site.start()
     
-    # O'zbekiston vaqti bilan scheduler
     scheduler = AsyncIOScheduler(timezone="Asia/Tashkent")
     scheduler.add_job(daily_reminder, 'cron', hour=8, minute=0)
     scheduler.start()
@@ -51,13 +49,13 @@ def download_video(url):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl: ydl.download([url])
     return 'video.mp4'
 
-# --- ASOSIY BUYRUQLAR ---
+# --- START BUYRUG'I ---
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
     kb = [[types.KeyboardButton(text=BTN_VIEW)]]
-    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    keyboard = types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True, one_time_keyboard=False)
     await message.answer(
-        "Salom! Matn yuboring yoki Instagram link tashlang. ✨\n\nBu bot @save_bot_pro uchun maxsus sozlangan.",
+        "Salom! Matn yozing yoki Instagram link tashlang. ✨\nMen sizga ma'lumotlarni vaqtini hisoblab saqlashga yordam beraman.",
         reply_markup=keyboard
     )
 
@@ -75,13 +73,10 @@ async def view_notes_handler(message: types.Message):
             hours = diff.seconds // 3600
             minutes = (diff.seconds // 60) % 60
             
-            # Matnni shakllantirish
-            time_text = f"⏳ Siz bu xabarni saqlaganingizga:\n"
-            if days > 0:
-                time_text += f"➡️ {days} kun\n"
-            time_text += f"➡️ {hours} soat va {minutes} minut bo'ldi."
+            # Siz xohlagan format: Kun, Soat va Minut (0 bo'lsa ham ko'rinadi)
+            time_text = (f"⏳ Siz bu xabarni saqlaganingizga:\n"
+                         f"➡️ {days} kun, {hours} soat va {minutes} minut bo'ldi.")
             
-            # Alohida o'chirish tugmasi
             builder = InlineKeyboardBuilder()
             builder.row(types.InlineKeyboardButton(text="🗑 O'chirish", callback_data=f"del_{i}"))
             
@@ -93,9 +88,10 @@ async def view_notes_handler(message: types.Message):
     else:
         await message.answer("Hozircha hech qanday ma'lumot saqlanmagan. ✨")
 
-# --- XABARLARNI QABUL QILISH VA TASDIQLASH ---
+# --- XABARLARNI QABUL QILISH ---
 @dp.message(F.text)
 async def handle_msg(message: types.Message):
+    # Instagram tekshiruvi
     if "instagram.com" in message.text:
         wait = await message.answer("Video yuklanmoqda... ⏳")
         try:
@@ -106,6 +102,7 @@ async def handle_msg(message: types.Message):
             await wait.edit_text("Xatolik! Linkni tekshiring. ❌")
         return
 
+    # Matnni vaqtinchalik xotiraga olish
     uid = message.from_user.id
     if uid not in user_data: user_data[uid] = {'notes': [], 'temp': ""}
     user_data[uid]['temp'] = message.text
@@ -121,6 +118,7 @@ async def save_ok(callback: types.CallbackQuery):
     uid = callback.from_user.id
     note = user_data[uid].get('temp', "")
     if note:
+        # Hozirgi aniq vaqtni saqlash
         user_data[uid]['notes'].append({'text': note, 'time': datetime.now()})
         await callback.message.edit_text(f"'{note}' muvaffaqiyatli saqlandi! ✅")
     user_data[uid]['temp'] = ""
@@ -131,21 +129,16 @@ async def save_no(callback: types.CallbackQuery):
 
 @dp.callback_query(F.data.startswith("del_"))
 async def delete_callback(callback: types.CallbackQuery):
-    try:
-        index = int(callback.data.split("_")[1])
-        uid = callback.from_user.id
-        if uid in user_data and len(user_data[uid]['notes']) > index:
-            user_data[uid]['notes'].pop(index)
-            await callback.message.delete()
-            await callback.answer("O'chirildi ✅")
-    except:
-        await callback.answer("Xatolik! ❌")
+    index = int(callback.data.split("_")[1])
+    uid = callback.from_user.id
+    if uid in user_data and len(user_data[uid]['notes']) > index:
+        user_data[uid]['notes'].pop(index)
+        await callback.message.delete()
+        await callback.answer("O'chirildi ✅")
 
-# --- ISHGA TUSHIRISH ---
+# --- ASOSIY ISHGA TUSHIRISH ---
 async def main():
-    # Webhookni tozalash (Conflict oldini olish uchun muhim!)
     await bot.delete_webhook(drop_pending_updates=True)
-    # Server va botni birga ishga tushirish
     await asyncio.gather(start_services(), dp.start_polling(bot))
 
 if __name__ == "__main__":
