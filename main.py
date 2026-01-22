@@ -10,17 +10,18 @@ import speech_recognition as sr
 from pydub import AudioSegment
 
 # --- SOZLAMALAR ---
-TOKEN = "8302977160:AAFdsxTWdSFjiG-ppp-xJaxGbqE-89EhUzY" 
+# Siz bergan yangi token joylandi
+TOKEN = "8302977160:AAGTQoxzYXOgrajevf1TWSuHSujfeifmkrs" 
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 BTN_VOICE = "🎤 Ovozni matnga aylantirish"
 BTN_HOME = "🏠 Bosh menyu"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
-user_data = {} # Eslatma: Bu bot vaqtincha xotiradan foydalanadi
+user_data = {}
 
 # --- SERVER (RENDER UCHUN) ---
-async def handle(request): return web.Response(text="Bot is Live!")
+async def handle(request): return web.Response(text="Bot is Live with New Token!")
 async def start_services():
     app = web.Application()
     app.router.add_get("/", handle)
@@ -41,13 +42,13 @@ def main_menu():
 @dp.message(F.text == BTN_HOME)
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    # Tabassum stikeri
+    # Siz aytgan stiker va salomlashish matni
     await message.answer_sticker("CAACAgIAAxkBAAELyRxl6R8X7TzS9Z7Q1Z_N8X7TzS9Z7A")
     await message.answer("Salom! Bot tayyor. Hamma xizmatlarimiz tayyor! ✨🤖", reply_markup=main_menu())
 
 # --- SAQLANGANLARNI KO'RISH (ANIQ VAQT BILAN) ---
 @dp.message(F.text == BTN_VIEW)
-async def view_notes(message: types.Message):
+async def view_notes_handler(message: types.Message):
     uid = message.from_user.id
     if uid in user_data and user_data[uid].get('notes'):
         await message.answer("Sizning barcha eslatmalaringiz: 👇")
@@ -57,11 +58,12 @@ async def view_notes(message: types.Message):
             
             builder = InlineKeyboardBuilder()
             builder.row(types.InlineKeyboardButton(text="🗑 Hammasini o'chirish", callback_data=f"delall_{i}"))
+            
             await message.answer(f"📌 **Xabar:** {n['text']}\n\n{time_text}", reply_markup=builder.as_markup(), parse_mode="Markdown")
     else:
         await message.answer("Hozircha hech narsa saqlanmagan. ✨")
 
-# --- OVOZLI XABAR (TEZROQ TAHLIL) ---
+# --- OVOZLI XABARNI MATNGA AYLANTIRISH ---
 @dp.message(F.text == BTN_VOICE)
 async def voice_start(message: types.Message):
     await message.answer("Menga ovozli xabar yuboring, men uni darhol matnga o'girib beraman! 🎤🚀")
@@ -119,6 +121,7 @@ async def delete_all_cb(callback: types.CallbackQuery):
     uid = callback.from_user.id
     if uid in user_data and len(user_data[uid]['notes']) > idx:
         target_text = user_data[uid]['notes'][idx]['text']
+        # Bir xil matnli barcha nusxalarni bittada o'chiradi
         user_data[uid]['notes'] = [n for n in user_data[uid]['notes'] if n['text'] != target_text]
         await callback.message.delete()
         await callback.answer("O'chirildi! ✅")
