@@ -25,26 +25,28 @@ async def start_services():
     app = web.Application()
     app.router.add_get("/", handle)
     runner = web.AppRunner(app); await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 8080)))
+    site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 10000)))
     await site.start()
 
-# --- ASOSIY MENYU TUGMALARI ---
+# --- ASOSIY MENYU ---
 def main_menu():
     kb = [
         [types.KeyboardButton(text=BTN_VIEW)],
         [types.KeyboardButton(text=BTN_VOICE)],
-        [types.KeyboardButton(text=BTN_HOME)] # Yangi qo'shilgan tugma
+        [types.KeyboardButton(text=BTN_HOME)]
     ]
     return types.ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
 
-# --- START BUYRUG'I ---
+# --- START VA BOSH MENYU ---
 @dp.message(F.text == BTN_HOME)
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
+    # Stiker yuborish
     await message.answer_sticker("CAACAgIAAxkBAAELyRxl6R8X7TzS9Z7Q1Z_N8X7TzS9Z7A")
+    # Siz aytgan matn
     await message.answer("Salom! Bot tayyor. Hamma xizmatlarimiz tayyor! ✨🤖", reply_markup=main_menu())
 
-# --- SAQLANGANLARNI KO'RISH VA TO'LIQ O'CHIRISH ---
+# --- SAQLANGANLARNI KO'RISH (ANIQ VAQT BILAN) ---
 @dp.message(F.text == BTN_VIEW)
 async def view_notes_handler(message: types.Message):
     uid = message.from_user.id
@@ -61,7 +63,7 @@ async def view_notes_handler(message: types.Message):
     else:
         await message.answer("Hozircha hech narsa saqlanmagan. ✨")
 
-# --- OVOZLI XABAR (TEZROQ TAHLIL) ---
+# --- OVOZLI XABARNI MATNGA AYLANTIRISH (TEZKOR) ---
 @dp.message(F.text == BTN_VOICE)
 async def voice_start(message: types.Message):
     await message.answer("Menga ovozli xabar yuboring, men uni darhol matnga o'girib beraman! 🎤🚀")
@@ -91,7 +93,7 @@ async def voice_proc(message: types.Message):
 @dp.message(F.text)
 async def text_handler(message: types.Message):
     if "instagram.com" in message.text:
-        return # Instagram yuklash kodi o'zgarishsiz
+        return # Instagram yuklash kodi
 
     uid = message.from_user.id
     if uid not in user_data: user_data[uid] = {'notes': [], 'temp': ""}
@@ -102,12 +104,12 @@ async def text_handler(message: types.Message):
                 types.InlineKeyboardButton(text="Yo'q ❌", callback_data="save_no"))
     await message.answer(f"'{message.text}' - Saqlaymi?", reply_markup=builder.as_markup())
 
-# --- CALLBACKLAR ---
+# --- CALLBACK TUGMALAR ---
 @dp.callback_query(F.data == "save_ok")
 async def save_cb(callback: types.CallbackQuery):
     uid = callback.from_user.id
-    text = user_data[uid]['temp']
-    if not any(n['text'] == text for n in user_data[uid]['notes']):
+    text = user_data[uid].get('temp', "")
+    if text and not any(n['text'] == text for n in user_data[uid]['notes']):
         user_data[uid]['notes'].append({'text': text, 'time': datetime.now()})
         await callback.message.edit_text(f"'{text}' muvaffaqiyatli saqlandi! ✅")
     else:
@@ -117,7 +119,7 @@ async def save_cb(callback: types.CallbackQuery):
 async def delete_all_cb(callback: types.CallbackQuery):
     idx = int(callback.data.split("_")[1])
     uid = callback.from_user.id
-    if uid in user_data:
+    if uid in user_data and len(user_data[uid]['notes']) > idx:
         target_text = user_data[uid]['notes'][idx]['text']
         user_data[uid]['notes'] = [n for n in user_data[uid]['notes'] if n['text'] != target_text]
         await callback.message.delete()
