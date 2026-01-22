@@ -21,7 +21,7 @@ user_data = {}
 
 # --- SERVER (RENDER PORTI UCHUN) ---
 # Render "No open ports detected" xatosini bermasligi uchun
-async def handle(request): return web.Response(text="Bot is Live!")
+async def handle(request): return web.Response(text="Bot is Live and Stable!")
 async def start_services():
     app = web.Application()
     app.router.add_get("/", handle)
@@ -48,7 +48,7 @@ async def cmd_start(message: types.Message):
 
 # --- SAQLANGANLARNI KO'RISH (ANIQ VAQT BILAN) ---
 @dp.message(F.text == BTN_VIEW)
-async def view_notes(message: types.Message):
+async def view_notes_handler(message: types.Message):
     uid = message.from_user.id
     if uid in user_data and user_data[uid].get('notes'):
         await message.answer("Sizning barcha eslatmalaringiz: 👇")
@@ -82,7 +82,7 @@ async def voice_proc(message: types.Message):
             audio_data = recognizer.record(source)
             text = recognizer.recognize_google(audio_data, language="uz-UZ")
         await wait.edit_text(f"🎤 **Siz aytgan matn:**\n\n`{text}`", parse_mode="Markdown")
-    except:
+    except Exception:
         await wait.edit_text("Kechirasiz, ovozni tushunib bo'lmadi. ❌")
     finally:
         if os.path.exists(voice_path): os.remove(voice_path)
@@ -122,7 +122,7 @@ async def delete_all_cb(callback: types.CallbackQuery):
         await callback.answer("O'chirildi! ✅")
 
 async def main():
-    # Webhookni o'chirish (Conflict xatosini yo'qotadi)
+    # Eski ulanishlarni va webhooklarni o'chirish (Conflict xatosi uchun yechim)
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(start_services(), dp.start_polling(bot))
 
