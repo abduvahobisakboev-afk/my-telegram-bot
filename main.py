@@ -5,12 +5,11 @@ from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiohttp import web
-import yt_dlp
 import speech_recognition as sr
 from pydub import AudioSegment
 
 # --- SOZLAMALAR ---
-# Siz bergan yangi token joylandi
+# Siz bergan yangi token bu yerda
 TOKEN = "8302977160:AAGTQoxzYXOgrajevf1TWSuHSujfeifmkrs" 
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 BTN_VOICE = "🎤 Ovozni matnga aylantirish"
@@ -20,8 +19,9 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 user_data = {}
 
-# --- SERVER (RENDER UCHUN) ---
-async def handle(request): return web.Response(text="Bot is Live with New Token!")
+# --- SERVER (RENDER PORTI UCHUN) ---
+# Render "No open ports detected" xatosini bermasligi uchun
+async def handle(request): return web.Response(text="Bot is Live!")
 async def start_services():
     app = web.Application()
     app.router.add_get("/", handle)
@@ -42,13 +42,13 @@ def main_menu():
 @dp.message(F.text == BTN_HOME)
 @dp.message(Command("start"))
 async def cmd_start(message: types.Message):
-    # Siz aytgan stiker va salomlashish matni
+    # Siz xohlagan stiker va salomlashish
     await message.answer_sticker("CAACAgIAAxkBAAELyRxl6R8X7TzS9Z7Q1Z_N8X7TzS9Z7A")
     await message.answer("Salom! Bot tayyor. Hamma xizmatlarimiz tayyor! ✨🤖", reply_markup=main_menu())
 
 # --- SAQLANGANLARNI KO'RISH (ANIQ VAQT BILAN) ---
 @dp.message(F.text == BTN_VIEW)
-async def view_notes_handler(message: types.Message):
+async def view_notes(message: types.Message):
     uid = message.from_user.id
     if uid in user_data and user_data[uid].get('notes'):
         await message.answer("Sizning barcha eslatmalaringiz: 👇")
@@ -58,12 +58,11 @@ async def view_notes_handler(message: types.Message):
             
             builder = InlineKeyboardBuilder()
             builder.row(types.InlineKeyboardButton(text="🗑 Hammasini o'chirish", callback_data=f"delall_{i}"))
-            
             await message.answer(f"📌 **Xabar:** {n['text']}\n\n{time_text}", reply_markup=builder.as_markup(), parse_mode="Markdown")
     else:
         await message.answer("Hozircha hech narsa saqlanmagan. ✨")
 
-# --- OVOZLI XABARNI MATNGA AYLANTIRISH ---
+# --- OVOZLI XABAR (TEZROQ TAHLIL) ---
 @dp.message(F.text == BTN_VOICE)
 async def voice_start(message: types.Message):
     await message.answer("Menga ovozli xabar yuboring, men uni darhol matnga o'girib beraman! 🎤🚀")
@@ -92,9 +91,6 @@ async def voice_proc(message: types.Message):
 # --- MATNNI SAQLASH (DUBLIKATSIZ) ---
 @dp.message(F.text)
 async def text_handler(message: types.Message):
-    if "instagram.com" in message.text:
-        return # Instagram yuklovchi mantiqi
-
     uid = message.from_user.id
     if uid not in user_data: user_data[uid] = {'notes': [], 'temp': ""}
     user_data[uid]['temp'] = message.text
@@ -121,12 +117,12 @@ async def delete_all_cb(callback: types.CallbackQuery):
     uid = callback.from_user.id
     if uid in user_data and len(user_data[uid]['notes']) > idx:
         target_text = user_data[uid]['notes'][idx]['text']
-        # Bir xil matnli barcha nusxalarni bittada o'chiradi
         user_data[uid]['notes'] = [n for n in user_data[uid]['notes'] if n['text'] != target_text]
         await callback.message.delete()
         await callback.answer("O'chirildi! ✅")
 
 async def main():
+    # Webhookni o'chirish (Conflict xatosini yo'qotadi)
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(start_services(), dp.start_polling(bot))
 
