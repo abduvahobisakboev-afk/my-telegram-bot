@@ -10,7 +10,7 @@ from pydub import AudioSegment
 
 # --- SOZLAMALAR ---
 # Siz bergan yangi token bu yerda
-TOKEN = "8302977160:AAGTQoxzYXOgrajevf1TWSuHSujfeifmkrs" 
+TOKEN = "TOKEN = "8302977160:AAFTEA71KgcKbkvC4so4udCA9OISLtUItVM" 
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 BTN_VOICE = "🎤 Ovozni matnga aylantirish"
 BTN_HOME = "🏠 Bosh menyu"
@@ -128,3 +128,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
