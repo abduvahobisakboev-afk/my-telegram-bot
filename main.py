@@ -9,8 +9,8 @@ import speech_recognition as sr
 from pydub import AudioSegment
 
 # --- SOZLAMALAR ---
-# Siz bergan yangi token bu yerda
-TOKEN = "TOKEN = "8302977160:AAFTEA71KgcKbkvC4so4udCA9OISLtUItVM" 
+# Tokenni yozishda xatolik butunlay tuzatildi
+TOKEN = "8302977160:AAFTEA71KgckbkvC4so4udCA9OISLtUitVM" 
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 BTN_VOICE = "🎤 Ovozni matnga aylantirish"
 BTN_HOME = "🏠 Bosh menyu"
@@ -62,7 +62,7 @@ async def view_notes_handler(message: types.Message):
     else:
         await message.answer("Hozircha hech narsa saqlanmagan. ✨")
 
-# --- OVOZLI XABAR (TEZROQ TAHLIL) ---
+# --- OVOZLI XABAR TAHLILI ---
 @dp.message(F.text == BTN_VOICE)
 async def voice_start(message: types.Message):
     await message.answer("Menga ovozli xabar yuboring, men uni darhol matnga o'girib beraman! 🎤🚀")
@@ -122,10 +122,9 @@ async def delete_all_cb(callback: types.CallbackQuery):
         await callback.answer("O'chirildi! ✅")
 
 async def main():
-    # Eski ulanishlarni va webhooklarni o'chirish (Conflict xatosi uchun yechim)
+    # Webhookni tozalash (Conflict xatosi chiqmasligi uchun)
     await bot.delete_webhook(drop_pending_updates=True)
     await asyncio.gather(start_services(), dp.start_polling(bot))
 
 if __name__ == "__main__":
     asyncio.run(main())
-
