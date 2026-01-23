@@ -9,7 +9,6 @@ import speech_recognition as sr
 from pydub import AudioSegment
 
 # --- SOZLAMALAR ---
-# Sizning oxirgi to'g'ri tokeningiz
 TOKEN = "8302977160:AAEJXME09z2ZdMkRQE7WDJN20bEoWkE5lCg" 
 BTN_VIEW = "🗄 Saqlanganlarni ko'rish"
 BTN_VOICE = "🎤 Ovozni matnga aylantirish"
@@ -20,7 +19,6 @@ dp = Dispatcher()
 user_data = {}
 
 # --- 24/7 ISHLASH UCHUN SERVER ---
-# Render portni aniqlashi va bot o'chib qolmasligi uchun
 async def handle(request): 
     return web.Response(text="Bot 24/7 ish holatida!")
 
@@ -29,7 +27,6 @@ async def start_services():
     app.router.add_get("/", handle)
     runner = web.AppRunner(app)
     await runner.setup()
-    # PORT 10000 Render uchun standart
     site = web.TCPSite(runner, "0.0.0.0", int(os.environ.get("PORT", 10000)))
     await site.start()
 
@@ -64,14 +61,13 @@ async def view_notes(message: types.Message):
     else:
         await message.answer("Hozircha hech narsa saqlanmagan. ✨")
 
-# --- OVOZLI XABARNI MATNGA O'GIRISH ---
-@dp.message(F.text == BTAN_VOICE)
+# --- OVOZLI XABARNI MATNGA O'GIRISH (XATO TUZATILDI) ---
+@dp.message(F.text == BTN_VOICE)
+async def voice_start_msg(message: types.Message):
+    await message.answer("🎤 Menga ovozli xabar yuboring!")
+
 @dp.message(F.voice)
 async def voice_proc(message: types.Message):
-    if message.text == BTN_VOICE:
-        await message.answer("🎤 Menga ovozli xabar yuboring!")
-        return
-        
     wait = await message.answer("Ovoz tahlil qilinmoqda... 🚀")
     file = await bot.get_file(message.voice.file_id)
     path = f"v_{message.from_user.id}.ogg"
@@ -107,9 +103,7 @@ async def save_cb(callback: types.CallbackQuery):
     await callback.message.edit_text(f"Muvaffaqiyatli saqlandi! ✅")
 
 async def main():
-    # Eski ulanishlarni tozalash
     await bot.delete_webhook(drop_pending_updates=True)
-    # Server va Botni baravar ishga tushirish
     await asyncio.gather(start_services(), dp.start_polling(bot))
 
 if __name__ == "__main__":
