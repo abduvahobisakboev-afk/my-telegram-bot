@@ -1,6 +1,4 @@
 aiogram
 aiohttp
-yt-dlp
-apscheduler
 SpeechRecognition
 pydub
